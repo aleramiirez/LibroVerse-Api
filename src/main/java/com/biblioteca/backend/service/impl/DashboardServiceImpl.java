@@ -7,12 +7,14 @@ import com.biblioteca.backend.repository.BookRepository;
 import com.biblioteca.backend.service.DashboardServiceI;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.Month;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Implementación del servicio de métricas para la pantalla de inicio (Dashboard).
+ * Implementación del servicio de métricas para la pantalla de inicio
+ * (Dashboard).
  * Se encarga de agrupar y calcular las estadísticas de lectura del usuario
  * interactuando con la base de datos a través de BookRepository.
  */
@@ -35,34 +37,55 @@ public class DashboardServiceImpl implements DashboardServiceI {
      * Las operaciones incluyen:
      * 1. Buscar el libro que se está leyendo actualmente.
      * 2. Contar los libros que se han terminado en el año en curso.
-     * 3. Determinar cuál es el siguiente volumen si el libro actual pertenece a una saga.
+     * 3. Determinar cuál es el siguiente volumen si el libro actual pertenece a una
+     * saga.
      * </p>
-     * * @return Un objeto {@link DashboardResponse} que empaqueta todos los datos calculados
+     * * @return Un objeto {@link DashboardResponse} que empaqueta todos los datos
+     * calculados
      * listos para ser consumidos por el frontend.
      */
-    @Override
     public DashboardResponse getDashboardStats() {
         // 1. Obtener el libro que se está leyendo actualmente
         List<Book> readingBooks = bookRepository.findByStatus(ReadingStatus.READING);
         Book currentBook = readingBooks.isEmpty() ? null : readingBooks.get(0);
 
-        // 2. Calcular los libros leídos este año (1 de Enero al 31 de Diciembre)
-        LocalDate startOfYear = LocalDate.now().with(Month.JANUARY).withDayOfMonth(1);
-        LocalDate endOfYear = LocalDate.now().with(Month.DECEMBER).withDayOfMonth(31);
-        long booksReadThisYear = bookRepository.countByStatusAndEndDateBetween(
-                ReadingStatus.FINISHED, startOfYear, endOfYear
-        );
+        // 2. Obtener todos los libros terminados
+        List<Book> finishedBooks = bookRepository.findByStatus(ReadingStatus.FINISHED);
+        long totalBooksFinished = finishedBooks.size();
 
-        // 3. Buscar el siguiente volumen de la saga (si aplica)
-        Book nextBook = null;
-        if (currentBook != null && currentBook.getSaga() != null && currentBook.getIndexInSaga() != null) {
-            nextBook = bookRepository.findFirstBySagaIdAndIndexInSagaGreaterThanOrderByIndexInSagaAsc(
-                    currentBook.getSaga().getId(),
-                    currentBook.getIndexInSaga()
-            ).orElse(null);
+        // 3. Calcular promedio de días de lectura y el género favorito
+        long totalReadingDays = 0;
+        int booksWithDates = 0;
+        Map<String, Long> genreCounts = new HashMap<>();
+
+        for (Book book : finishedBooks) {
+            // Promedio de lectura
+            if (book.getStartDate() != null && book.getEndDate() != null) {
+                long days = ChronoUnit.DAYS.between(book.getStartDate(), book.getEndDate());
+                totalReadingDays += Math.max(days, 1); // Al menos 1 día de lectura
+                booksWithDates++;
+            }
+
+            // Género favorito
+            if (book.getGenres() != null) {
+                for (com.biblioteca.backend.model.Genre genre : book.getGenres()) {
+                    genreCounts.put(genre.getName(), genreCounts.getOrDefault(genre.getName(), 0L) + 1);
+                }
+            }
+        }
+
+        Long averageReadingDays = booksWithDates > 0 ? totalReadingDays / booksWithDates : null;
+
+        String favoriteGenre = null;
+        long maxCount = 0;
+        for (Map.Entry<String, Long> entry : genreCounts.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                favoriteGenre = entry.getKey();
+            }
         }
 
         // Devolver todo empaquetado
-        return new DashboardResponse(currentBook, booksReadThisYear, nextBook);
+        return new DashboardResponse(currentBook, totalBooksFinished, averageReadingDays, favoriteGenre);
     }
 }
