@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: biblioteca-digital
+
+  # 1. MAGIA DE JAVA 25: Habilitamos los hilos virtuales para I/O no bloqueante
+  threads:
+    virtual:
+      enabled: true
+
+  # 2. CONEXI�N A LA BASE DE DATOS (Coincide con tu docker-compose)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/biblioteca
+    username: root
+    password: rootpassword
+    driver-class-name: org.postgresql.Driver
+
+    # Optimizaci�n estricta de RAM para el "Zero Cost"
+    hikari:
+      maximum-pool-size: 5      # Solo permitimos 5 conexiones simult�neas (suficiente para ti)
+      minimum-idle: 1           # Mantiene 1 conexi�n dormida lista para usarse
+      idle-timeout: 300000      # Cierra conexiones inactivas r�pido para liberar memoria
+      max-lifetime: 1200000     # Recicla conexiones cada 20 mins para evitar fugas de memoria
+
+  # 3. CONFIGURACI�N DE JPA / HIBERNATE
+  jpa:
+    hibernate:
+      # 'update' lee tus Entidades y crea o modifica las tablas autom�ticamente
+      ddl-auto: update
+
+    # Te mostrar� en la consola del IDE el SQL que Spring genera por debajo
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# 4. CONFIGURACI�N DEL SERVIDOR WEB
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+google:
+  books:
+    api-key: ${GOOGLE_BOOKS_API_KEY}
