@@ -23,7 +23,7 @@ public class Saga {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column(name = "cover_url")
@@ -39,5 +39,10 @@ public class Saga {
     @Builder.Default
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties("saga")
     private List<Book> books = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private User user;
 
 }

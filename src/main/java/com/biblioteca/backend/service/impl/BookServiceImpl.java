@@ -11,6 +11,8 @@ import com.biblioteca.backend.model.Genre;
 import com.biblioteca.backend.repository.GenreRepository;
 import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.BookServiceI;
+import com.biblioteca.backend.model.User;
+import com.biblioteca.backend.security.SecurityUtils;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,6 +58,9 @@ public class BookServiceImpl implements BookServiceI {
     @Override
     @Transactional
     public Book saveBook(final Book book) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        book.setUser(User.builder().id(currentUserId).build());
+
         if (book.getId() == null && book.getStatus() == null) {
             book.setStatus(ReadingStatus.PENDING);
         }
@@ -79,7 +84,7 @@ public class BookServiceImpl implements BookServiceI {
         // Gestionar Saga (Buscar existente o crear nueva)
         if (book.getSaga() != null && book.getSaga().getName() != null) {
             String sagaName = book.getSaga().getName();
-            Optional<Saga> existingSaga = sagaRepository.findByName(sagaName);
+            Optional<Saga> existingSaga = sagaRepository.findByUserIdAndName(currentUserId, sagaName);
 
             Saga targetSaga;
             if (existingSaga.isPresent()) {
@@ -90,7 +95,10 @@ public class BookServiceImpl implements BookServiceI {
                     sagaRepository.save(targetSaga);
                 }
             } else {
-                targetSaga = Saga.builder().name(sagaName).build();
+                targetSaga = Saga.builder()
+                        .name(sagaName)
+                        .user(User.builder().id(currentUserId).build())
+                        .build();
                 if (book.getCoverUrl() != null) {
                     targetSaga.setCoverUrl(book.getCoverUrl());
                 }
@@ -122,7 +130,8 @@ public class BookServiceImpl implements BookServiceI {
      */
     @Override
     public List<Book> getAllBooks() {
-        return bookRepository.findAll();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return bookRepository.findByUserId(currentUserId);
     }
 
     /**
@@ -179,7 +188,8 @@ public class BookServiceImpl implements BookServiceI {
         if (bookDetails.getSaga() != null && bookDetails.getSaga().getName() != null
                 && !bookDetails.getSaga().getName().isEmpty()) {
             String sagaName = bookDetails.getSaga().getName();
-            Optional<Saga> existingSaga = sagaRepository.findByName(sagaName);
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+            Optional<Saga> existingSaga = sagaRepository.findByUserIdAndName(currentUserId, sagaName);
 
             Saga targetSaga;
             if (existingSaga.isPresent()) {
@@ -194,7 +204,10 @@ public class BookServiceImpl implements BookServiceI {
                     sagaRepository.save(targetSaga);
                 }
             } else {
-                targetSaga = Saga.builder().name(sagaName).build();
+                targetSaga = Saga.builder()
+                        .name(sagaName)
+                        .user(User.builder().id(currentUserId).build())
+                        .build();
                 if (effectiveCover != null) {
                     targetSaga.setCoverUrl(effectiveCover);
                 }
