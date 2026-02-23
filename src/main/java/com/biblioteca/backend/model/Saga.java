@@ -40,4 +40,9 @@ public class Saga {
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties("saga")
     private List<Book> books = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private User user;
+
 }

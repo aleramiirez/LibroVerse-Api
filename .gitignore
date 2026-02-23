@@ -41,3 +41,6 @@ application-local.yml
 
 ### Logs de ejecucion ###
 *.log
+
+### Archivos subidos por los usuarios ###
+uploads/

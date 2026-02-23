@@ -6,6 +6,8 @@ import com.biblioteca.backend.model.Saga;
 import com.biblioteca.backend.repository.BookRepository;
 import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.SagaServiceI;
+import com.biblioteca.backend.model.User;
+import com.biblioteca.backend.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +25,8 @@ public class SagaServiceImpl implements SagaServiceI {
 
     @Override
     public List<Saga> getAllSagas() {
-        return sagaRepository.findAll();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return sagaRepository.findByUserId(currentUserId);
     }
 
     @Override
@@ -34,6 +37,8 @@ public class SagaServiceImpl implements SagaServiceI {
 
     @Override
     public Saga createSaga(Saga saga) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        saga.setUser(User.builder().id(currentUserId).build());
         return sagaRepository.save(saga);
     }
 

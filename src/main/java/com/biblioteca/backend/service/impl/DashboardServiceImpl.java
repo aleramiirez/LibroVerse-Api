@@ -4,6 +4,7 @@ import com.biblioteca.backend.dto.DashboardResponse;
 import com.biblioteca.backend.model.Book;
 import com.biblioteca.backend.model.ReadingStatus;
 import com.biblioteca.backend.repository.BookRepository;
+import com.biblioteca.backend.security.SecurityUtils;
 import com.biblioteca.backend.service.DashboardServiceI;
 import org.springframework.stereotype.Service;
 
@@ -45,12 +46,14 @@ public class DashboardServiceImpl implements DashboardServiceI {
      * listos para ser consumidos por el frontend.
      */
     public DashboardResponse getDashboardStats() {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
         // 1. Obtener el libro que se está leyendo actualmente
-        List<Book> readingBooks = bookRepository.findByStatus(ReadingStatus.READING);
+        List<Book> readingBooks = bookRepository.findByUserIdAndStatus(currentUserId, ReadingStatus.READING);
         Book currentBook = readingBooks.isEmpty() ? null : readingBooks.get(0);
 
         // 2. Obtener todos los libros terminados
-        List<Book> finishedBooks = bookRepository.findByStatus(ReadingStatus.FINISHED);
+        List<Book> finishedBooks = bookRepository.findByUserIdAndStatus(currentUserId, ReadingStatus.FINISHED);
         long totalBooksFinished = finishedBooks.size();
 
         // 3. Calcular promedio de días de lectura y el género favorito

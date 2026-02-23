@@ -10,39 +10,36 @@ import java.util.Optional;
 
 /**
  * Repositorio JPA para la entidad Book.
- * Contiene métodos de consulta optimizados para alimentar el Dashboard principal.
+ * Contiene métodos de consulta optimizados para alimentar el Dashboard
+ * principal.
  */
 public interface BookRepository extends JpaRepository<Book, Long> {
 
     /**
-     * Obtiene los libros según su estado actual.
-     * @param status El estado de lectura (ej. READING para ver el libro actual).
-     * @return Lista de libros que coinciden con el estado.
+     * Obtiene los libros según su estado actual y el id del usuario.
      */
-    List<Book> findByStatus(ReadingStatus status);
+    List<Book> findByUserIdAndStatus(Long userId, ReadingStatus status);
 
     /**
-     * Calcula la cantidad de libros terminados en un rango de fechas.
-     * Ideal para métricas anuales de lectura.
-     * @param start Fecha de inicio del periodo.
-     * @param end Fecha de fin del periodo.
-     * @return Número total de libros leídos.
+     * Calcula la cantidad de libros terminados en un rango de fechas para un
+     * usuario.
      */
-    long countByStatusAndEndDateBetween(ReadingStatus status, LocalDate start, LocalDate end);
+    long countByUserIdAndStatusAndEndDateBetween(Long userId, ReadingStatus status, LocalDate start, LocalDate end);
 
     /**
-     * Busca libros cuyo título contenga la cadena proporcionada, ignorando mayúsculas.
-     * Utilizado para el buscador interno de la biblioteca en el Frontend.
-     * @param title Fragmento del título a buscar.
-     * @return Lista de libros coincidentes.
+     * Busca libros por título y usuario.
      */
-    List<Book> findByTitleContainingIgnoreCase(String title);
+    List<Book> findByUserIdAndTitleContainingIgnoreCase(Long userId, String title);
 
     /**
-     * Encuentra el siguiente volumen disponible de una saga que el usuario está leyendo.
-     * @param sagaId Identificador de la saga.
-     * @param currentIndex Índice del volumen actual recién terminado.
-     * @return El siguiente libro de la saga, si existe en la biblioteca.
+     * Encuentra el siguiente volumen disponible de una saga que el usuario está
+     * leyendo.
      */
-    Optional<Book> findFirstBySagaIdAndIndexInSagaGreaterThanOrderByIndexInSagaAsc(Long sagaId, Integer currentIndex);
+    Optional<Book> findFirstByUserIdAndSagaIdAndIndexInSagaGreaterThanOrderByIndexInSagaAsc(Long userId, Long sagaId,
+            Integer currentIndex);
+
+    /**
+     * Obtiene todos los libros de un usuario.
+     */
+    List<Book> findByUserId(Long userId);
 }

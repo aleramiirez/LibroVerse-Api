@@ -81,4 +81,9 @@ public class Book {
     @JsonIgnoreProperties("books")
     private Set<Genre> genres = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private User user;
+
 }
