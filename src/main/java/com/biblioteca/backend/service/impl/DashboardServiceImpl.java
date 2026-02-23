@@ -4,6 +4,7 @@ import com.biblioteca.backend.dto.DashboardResponse;
 import com.biblioteca.backend.model.Book;
 import com.biblioteca.backend.model.ReadingStatus;
 import com.biblioteca.backend.repository.BookRepository;
+import com.biblioteca.backend.security.SecurityUtils;
 import com.biblioteca.backend.service.DashboardServiceI;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,7 @@ public class DashboardServiceImpl implements DashboardServiceI {
      * listos para ser consumidos por el frontend.
      */
     public DashboardResponse getDashboardStats() {
-        Long currentUserId = 1L; // TODO: Reemplazar con SecurityContext en Fase 2
+        Long currentUserId = SecurityUtils.getCurrentUserId();
 
         // 1. Obtener el libro que se está leyendo actualmente
         List<Book> readingBooks = bookRepository.findByUserIdAndStatus(currentUserId, ReadingStatus.READING);
