@@ -11,6 +11,8 @@ import com.biblioteca.backend.model.Genre;
 import com.biblioteca.backend.repository.GenreRepository;
 import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.BookServiceI;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -133,13 +135,10 @@ public class BookServiceImpl implements BookServiceI {
     @Override
     @Transactional
     public Book updateBook(Long id, Book bookDetails) {
-        // 1. Buscamos el libro (si no existe, saltará la excepción 404 que creamos)
         Book existingBook = getBookById(id);
 
-        // 2. Actualizamos solo los campos de "seguimiento" y metadatos editables (si no
-        // son null)
         if (bookDetails.getTitle() != null) {
-            existingBook.setTitle(bookDetails.getTitle()); // Permitir editar título
+            existingBook.setTitle(bookDetails.getTitle());
         }
         if (bookDetails.getStatus() != null) {
             existingBook.setStatus(bookDetails.getStatus());
@@ -157,7 +156,6 @@ public class BookServiceImpl implements BookServiceI {
             existingBook.setIndexInSaga(bookDetails.getIndexInSaga());
         }
 
-        // Actualizar Autor
         if (bookDetails.getAuthor() != null && bookDetails.getAuthor().getName() != null) {
             String newAuthorName = bookDetails.getAuthor().getName();
             // Solo cambiar si es diferente
