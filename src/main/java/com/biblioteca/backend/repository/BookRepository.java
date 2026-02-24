@@ -3,6 +3,7 @@ package com.biblioteca.backend.repository;
 import com.biblioteca.backend.model.Book;
 import com.biblioteca.backend.model.ReadingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,5 +42,6 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     /**
      * Obtiene todos los libros de un usuario.
      */
+    @EntityGraph(attributePaths = {"author", "saga", "genres"})
     List<Book> findByUserId(Long userId);
 }
