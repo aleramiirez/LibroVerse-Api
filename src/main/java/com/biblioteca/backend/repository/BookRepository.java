@@ -11,13 +11,18 @@ import java.util.Optional;
 
 /**
  * Repositorio JPA para la entidad Book.
- * Contiene métodos de consulta optimizados para alimentar el Dashboard
- * principal.
+ * <p>
+ * Contiene la lógica de acceso a datos para los libros, incluyendo consultas
+ * complejas para el Dashboard y optimizaciones de carga mediante EntityGraph.
+ * </p>
  */
 public interface BookRepository extends JpaRepository<Book, Long> {
 
     /**
-     * Obtiene los libros según su estado actual y el id del usuario.
+     * Obtiene los libros filtrados por usuario y su estado de lectura.
+     * @param userId ID del usuario propietario.
+     * @param status Estado (PENDING, READING, FINISHED).
+     * @return Lista de libros que coinciden con el estado.
      */
     List<Book> findByUserIdAndStatus(Long userId, ReadingStatus status);
 
