@@ -2,6 +2,7 @@ package com.biblioteca.backend.repository;
 
 import com.biblioteca.backend.model.Author;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
@@ -12,6 +13,7 @@ import java.util.Optional;
  * permitiendo la búsqueda y almacenamiento de escritores de forma global.
  * </p>
  */
+@Repository
 public interface AuthorRepository extends JpaRepository<Author, Long> {
 
     /**
