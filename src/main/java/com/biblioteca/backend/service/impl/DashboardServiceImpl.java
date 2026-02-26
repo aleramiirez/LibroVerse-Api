@@ -17,9 +17,9 @@ import java.util.Map;
 /**
  * Implementación del servicio de métricas para la pantalla de inicio (Dashboard).
  * <p>
- * Esta clase se encarga de agrupar, procesar y calcular las estadísticas de lectura
- * personalizadas del usuario, interactuando con la base de datos a través de
- * {@link BookRepository}.
+ * Esta clase se encarga de agrupar y recopilar las estadísticas.
+ * Ha sido optimizada delegando las operaciones matemáticas pesadas (promedios y agrupaciones)
+ * directamente a la base de datos (SQL) para reducir el consumo de RAM en la máquina virtual.
  * </p>
  */
 @RequiredArgsConstructor
@@ -29,67 +29,45 @@ public class DashboardServiceImpl implements DashboardServiceI {
     /** Repositorio para el acceso a los datos de los libros. */
     private final BookRepository bookRepository;
 
+
     /**
-     * Calcula y recopila las estadísticas principales del usuario en tiempo real.
+     * Calcula y recopila las estadísticas de lectura para el panel de control del usuario.
      * <p>
-     * El proceso realiza las siguientes operaciones:
-     * 1. Recupera el libro que el usuario está leyendo actualmente.
-     * 2. Contabiliza el total de libros finalizados.
-     * 3. Calcula el promedio de días invertidos en cada lectura basándose en las fechas de inicio y fin.
-     * 4. Identifica el género literario más frecuente entre los libros terminados.
+     * El proceso sigue una estrategia de optimización híbrida:
+     * 1. Recupera el libro actual mediante una consulta filtrada por estado.
+     * 2. Delega el conteo de libros finalizados, el cálculo del promedio de días de lectura
+     * y la determinación del género favorito al motor de la base de datos (PostgreSQL).
      * </p>
-     * * @return Un objeto {@link DashboardResponse} que contiene las métricas calculadas
-     * para ser visualizadas en el frontend.
+     * <p>
+     * Esta delegación a SQL evita la carga masiva de objetos en la memoria RAM y reduce
+     * drásticamente el uso de CPU en la aplicación Java, permitiendo un rendimiento
+     * fluido en entornos con recursos limitados (Micro VMs).
+     * </p>
+     * * @return Un objeto {@link DashboardResponse} con el resumen de actividad del usuario.
      */
+    @Override
     public DashboardResponse getDashboardStats() {
-        // Obtención del ID del usuario autenticado en el contexto de seguridad
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
-        // 1. Obtener el libro que se está leyendo actualmente
+        // 1. Obtener el libro actual
         List<Book> readingBooks = bookRepository.findByUserIdAndStatus(currentUserId, ReadingStatus.READING);
         Book currentBook = readingBooks.isEmpty() ? null : readingBooks.get(0);
 
-        // 2. Obtener todos los libros terminados para el cálculo de estadísticas
-        List<Book> finishedBooks = bookRepository.findByUserIdAndStatus(currentUserId, ReadingStatus.FINISHED);
-        long totalBooksFinished = finishedBooks.size();
+        // 2. Contar libros terminados (Resolución instantánea en SQL, no carga objetos a memoria)
+        long totalBooksFinished = bookRepository.countByUserIdAndStatus(currentUserId, ReadingStatus.FINISHED);
 
-        // variables auxiliares para el cálculo de promedio y género favorito
-        long totalReadingDays = 0;
-        int booksWithDates = 0;
-        Map<String, Long> genreCounts = new HashMap<>();
-
-        // 3. Procesamiento de libros terminados
-        for (Book book : finishedBooks) {
-            // Cálculo de días de lectura si existen fechas de inicio y fin
-            if (book.getStartDate() != null && book.getEndDate() != null) {
-                long days = ChronoUnit.DAYS.between(book.getStartDate(), book.getEndDate());
-                // Se garantiza al menos 1 día para evitar promedios de cero en lecturas rápidas
-                totalReadingDays += Math.max(days, 1);
-                booksWithDates++;
-            }
-
-            // Conteo de frecuencias por género
-            if (book.getGenres() != null) {
-                for (com.biblioteca.backend.model.Genre genre : book.getGenres()) {
-                    genreCounts.put(genre.getName(), genreCounts.getOrDefault(genre.getName(), 0L) + 1);
-                }
-            }
+        // 3. Promedio de días (Procesado matemáticamente por PostgreSQL)
+        Double avgDaysSql = bookRepository.getAverageReadingDays(currentUserId);
+        Long averageReadingDays = null;
+        if (avgDaysSql != null) {
+            // Redondear el resultado y asegurar un mínimo de 1 día (para libros leídos el mismo día)
+            averageReadingDays = Math.max(Math.round(avgDaysSql), 1L);
         }
 
-        // Cálculo del promedio de días de lectura
-        Long averageReadingDays = booksWithDates > 0 ? totalReadingDays / booksWithDates : null;
+        // 4. Género favorito (PostgreSQL hace los JOINs y el ordenamiento)
+        String favoriteGenre = bookRepository.findFavoriteGenreByUserId(currentUserId);
 
-        // Determinación del género favorito (el de mayor frecuencia)
-        String favoriteGenre = null;
-        long maxCount = 0;
-        for (Map.Entry<String, Long> entry : genreCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                favoriteGenre = entry.getKey();
-            }
-        }
-
-        // Empaquetado y retorno de los resultados calculados
+        // Retornamos el objeto montado
         return new DashboardResponse(currentBook, totalBooksFinished, averageReadingDays, favoriteGenre);
     }
 }

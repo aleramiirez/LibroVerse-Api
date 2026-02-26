@@ -8,6 +8,7 @@ import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.SagaServiceI;
 import com.biblioteca.backend.model.User;
 import com.biblioteca.backend.security.SecurityUtils;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +49,7 @@ public class SagaServiceImpl implements SagaServiceI {
      * @throws ResourceNotFoundException Si no existe ninguna saga con el ID proporcionado.
      */
     @Override
-    public Saga getSagaById(Long id) {
+    public Saga getSagaById(final Long id) {
         return sagaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Saga no encontrada con ID: " + id));
     }
@@ -59,7 +60,7 @@ public class SagaServiceImpl implements SagaServiceI {
      * @return La saga persistida con su identificador generado.
      */
     @Override
-    public Saga createSaga(Saga saga) {
+    public Saga createSaga(final Saga saga) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         saga.setUser(User.builder().id(currentUserId).build());
         return sagaRepository.save(saga);
@@ -72,7 +73,7 @@ public class SagaServiceImpl implements SagaServiceI {
      * @return La saga tras persistir los cambios.
      */
     @Override
-    public Saga updateSaga(Long id, Saga sagaDetails) {
+    public Saga updateSaga(final Long id, final Saga sagaDetails) {
         Saga saga = getSagaById(id);
         saga.setName(sagaDetails.getName());
         saga.setCoverUrl(sagaDetails.getCoverUrl());
@@ -89,19 +90,12 @@ public class SagaServiceImpl implements SagaServiceI {
      * @param id Identificador de la saga a eliminar.
      */
     @Override
-    public void deleteSaga(Long id) {
+    @Transactional
+    public void deleteSaga(final Long id) {
         Saga saga = getSagaById(id);
 
-        // Recuperación y desvinculación de los libros asociados
-        List<Book> books = saga.getBooks();
-        if (books != null) {
-            for (Book book : books) {
-                // Los libros se mantienen en la biblioteca pero pierden su pertenencia a la saga
-                book.setSaga(null);
-                book.setIndexInSaga(null);
-                bookRepository.save(book);
-            }
-        }
+        // Desvinculación de los libros asociados
+        bookRepository.unlinkBooksFromSaga(id);
 
         // Eliminación física de la saga en la base de datos
         sagaRepository.delete(saga);
