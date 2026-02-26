@@ -4,37 +4,31 @@ import com.biblioteca.backend.dto.GoogleBooksResponse;
 import com.biblioteca.backend.model.Book;
 import com.biblioteca.backend.service.BookServiceI;
 import com.biblioteca.backend.service.ExternalBookSearchService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * Controlador REST que expone los endpoints principales de la API para la gestión de libros.
+ * Controlador REST que expone los endpoints para la gestión de la biblioteca personal.
  * <p>
- * Actúa como intermediario entre las peticiones HTTP realizadas por el Frontend (Vercel)
- * y la lógica de negocio subyacente (Capa Service). Al usar @RestController, todos los
- * métodos serializan automáticamente sus retornos a formato JSON.
+ * Permite realizar operaciones CRUD sobre los libros del usuario y conectar con
+ * servicios externos para la búsqueda de nuevos ejemplares.
  * </p>
  */
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/books")
-@Tag(name = "Libros", description = "Operaciones para gestionar la biblioteca y búsquedas en Google")
+@Tag(name = "Libros", description = "Gestión de la biblioteca personal y búsquedas en Google Books")
 public class BookController {
 
     private final BookServiceI bookService;
     private final ExternalBookSearchService googleBooksService;
-
-    /**
-     * Constructor para la inyección de dependencias de los servicios necesarios.
-     * @param bookService Servicio con la lógica CRUD para los libros locales.
-     * @param googleBooksService Servicio para interactuar con la API externa de Google Books.
-     */
-    public BookController(BookServiceI bookService, ExternalBookSearchService googleBooksService) {
-        this.bookService = bookService;
-        this.googleBooksService = googleBooksService;
-    }
 
     /**
      * Endpoint para buscar metadatos e información de libros directamente en Google Books.
@@ -44,8 +38,12 @@ public class BookController {
      * @param title El título (o parte de él) del libro que el usuario desea buscar.
      * @return ResponseEntity con una lista de hasta 5 coincidencias en un formato JSON ligero.
      */
+    @Operation(summary = "Buscar en Google Books", description = "Consulta metadatos de libros externos por título")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Búsqueda realizada con éxito")
+    })
     @GetMapping("/search")
-    public ResponseEntity<List<GoogleBooksResponse.Item>> searchInGoogle(@RequestParam String title) {
+    public ResponseEntity<List<GoogleBooksResponse.Item>> searchInGoogle(@RequestParam final String title) {
         List<GoogleBooksResponse.Item> results = googleBooksService.searchByTitle(title);
         return ResponseEntity.ok(results);
     }
@@ -57,6 +55,10 @@ public class BookController {
      * </p>
      * @return ResponseEntity conteniendo una lista JSON con todos los libros asociados al usuario.
      */
+    @Operation(summary = "Obtener biblioteca", description = "Lista todos los libros guardados del usuario actual")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Listado de libros recuperado con éxito")
+    })
     @GetMapping
     public ResponseEntity<List<Book>> getMyLibrary() {
         return ResponseEntity.ok(bookService.getAllBooks());
@@ -70,8 +72,13 @@ public class BookController {
      * @param id El identificador único (Primary Key) del libro en la base de datos local.
      * @return ResponseEntity con el objeto Book solicitado (200 OK), o lanzará una excepción (404 Not Found) si no existe.
      */
+    @Operation(summary = "Obtener libro por ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Libro encontrado"),
+            @ApiResponse(responseCode = "404", description = "El libro con el ID proporcionado no existe")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<Book> getBook(@PathVariable Long id) {
+    public ResponseEntity<Book> getBook(@PathVariable final Long id) {
         return ResponseEntity.ok(bookService.getBookById(id));
     }
 
@@ -83,8 +90,13 @@ public class BookController {
      * @param book El objeto Book mapeado automáticamente por Spring Boot desde el JSON enviado por el frontend.
      * @return ResponseEntity con el libro guardado (incluyendo el nuevo ID generado) y código de estado 200 OK.
      */
+    @Operation(summary = "Añadir libro", description = "Guarda un nuevo libro en la base de datos local")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Libro añadido con éxito"),
+            @ApiResponse(responseCode = "400", description = "Datos del libro inválidos")
+    })
     @PostMapping
-    public ResponseEntity<Book> addBookToLibrary(@RequestBody Book book) {
+    public ResponseEntity<Book> addBookToLibrary(@RequestBody final Book book) {
         Book savedBook = bookService.saveBook(book);
         return ResponseEntity.ok(savedBook);
     }
@@ -99,8 +111,13 @@ public class BookController {
      * @param bookDetails JSON convertido a objeto Book con los datos nuevos a aplicar.
      * @return ResponseEntity con el libro tras haber sido actualizado y guardado en la base de datos.
      */
+    @Operation(summary = "Actualizar libro", description = "Modifica estado, rating o datos de un libro existente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Libro actualizado con éxito"),
+            @ApiResponse(responseCode = "404", description = "No se pudo encontrar el libro para actualizar")
+    })
     @PutMapping("/{id}")
-    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book bookDetails) {
+    public ResponseEntity<Book> updateBook(@PathVariable final Long id, @RequestBody final Book bookDetails) {
         return ResponseEntity.ok(bookService.updateBook(id, bookDetails));
     }
 
@@ -110,10 +127,16 @@ public class BookController {
      * Ejemplo de uso: DELETE /api/books/1
      * </p>
      * @param id El identificador único del libro a eliminar.
-     * @return ResponseEntity vacía con código 204 (No Content), que es el estándar en arquitecturas REST para indicar un borrado exitoso.
+     * @return ResponseEntity vacía con código 204 (No Content), que es el estándar en arquitecturas REST
+     * para indicar un borrado exitoso.
      */
+    @Operation(summary = "Eliminar libro", description = "Borra físicamente un libro de la biblioteca")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Libro eliminado con éxito"),
+            @ApiResponse(responseCode = "404", description = "El libro que se intenta borrar no existe")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteBook(@PathVariable final Long id) {
         bookService.deleteBook(id);
         // Devuelve un 204 No Content, que es el estándar REST para borrados exitosos
         return ResponseEntity.noContent().build();
