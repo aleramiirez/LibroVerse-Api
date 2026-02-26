@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -72,4 +74,38 @@ public interface BookRepository extends JpaRepository<Book, Long> {
      */
     @EntityGraph(attributePaths = {"author", "saga"})
     Page<Book> findByUserId(Long userId, Pageable pageable);
+
+    /**
+     * Cuenta el total de libros que están en un estado específico.
+     * @param userId ID del usuario.
+     * @param status Estado de lectura (ej. FINISHED).
+     * @return Cantidad de libros.
+     */
+    long countByUserIdAndStatus(Long userId, ReadingStatus status);
+
+    /**
+     * Calcula el promedio de días de lectura restando la fecha de fin y la de inicio
+     * directamente en el motor de la base de datos (PostgreSQL).
+     * @param userId ID del usuario.
+     * @return Promedio de días (puede ser nulo si no hay fechas).
+     */
+    @Query(value = "SELECT AVG(end_date - start_date) FROM books " +
+            "WHERE user_id = :userId AND status = 'FINISHED' " +
+            "AND start_date IS NOT NULL AND end_date IS NOT NULL",
+            nativeQuery = true)
+    Double getAverageReadingDays(@Param("userId") Long userId);
+
+    /**
+     * Obtiene el género más repetido entre los libros terminados del usuario.
+     * Agrupa, ordena por los más leídos y devuelve solo el primer resultado (LIMIT 1).
+     * @param userId ID del usuario.
+     * @return Nombre del género favorito o null si no hay datos.
+     */
+    @Query(value = "SELECT g.name FROM genres g " +
+            "JOIN book_genre bg ON g.id = bg.genre_id " +
+            "JOIN books b ON b.id = bg.book_id " +
+            "WHERE b.user_id = :userId AND b.status = 'FINISHED' " +
+            "GROUP BY g.name ORDER BY COUNT(g.id) DESC LIMIT 1",
+            nativeQuery = true)
+    String findFavoriteGenreByUserId(@Param("userId") Long userId);
 }
