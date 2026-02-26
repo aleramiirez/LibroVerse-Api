@@ -49,3 +49,9 @@ google:
 # CONFIGURACION SEGURIDAD JWT
 jwt:
   secret: ${JWT_SECRET}
+
+# CONFIGURACIÓN DE CLOUDINARY
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
