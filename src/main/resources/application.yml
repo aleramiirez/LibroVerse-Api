@@ -23,12 +23,13 @@ spring:
   # CONFIGURACION DE JPA / HIBERNATE
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 30
 
 # CONFIGURACION DEL SERVIDOR WEB
 server:
@@ -48,3 +49,9 @@ google:
 # CONFIGURACION SEGURIDAD JWT
 jwt:
   secret: ${JWT_SECRET}
+
+# CONFIGURACIÓN DE CLOUDINARY
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}

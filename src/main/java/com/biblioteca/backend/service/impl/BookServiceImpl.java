@@ -13,8 +13,13 @@ import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.BookServiceI;
 import com.biblioteca.backend.model.User;
 import com.biblioteca.backend.security.SecurityUtils;
+import com.biblioteca.backend.service.FileServiceI;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,38 +27,41 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Servicio interno para gestionar las operaciones CRUD de la biblioteca.
+ * Implementación del servicio interno para gestionar las operaciones CRUD de la biblioteca.
  * <p>
- * Centraliza la lógica de negocio para interactuar con PostgreSQL de manera
- * eficiente y transaccional, aislando al controlador de los detalles de la base
- * de datos.
+ * Esta clase centraliza la lógica de negocio para interactuar con PostgreSQL de manera
+ * eficiente y transaccional, aislando al controlador de los detalles de persistencia.
+ * Gestiona automáticamente la relación entre libros, autores, sagas y géneros.
  * </p>
  */
+@RequiredArgsConstructor
 @Service
 public class BookServiceImpl implements BookServiceI {
 
+    /** Repositorio para la persistencia de libros. */
     private final BookRepository bookRepository;
+
+    /** Repositorio para la gestión de autores. */
     private final AuthorRepository authorRepository;
+
+    /** Repositorio para la gestión de sagas o series. */
     private final SagaRepository sagaRepository;
+
+    /** Repositorio para la gestión de géneros literarios. */
     private final GenreRepository genreRepository;
 
-    /**
-     * Inyección de dependencias por constructor.
-     */
-    public BookServiceImpl(BookRepository bookRepository, AuthorRepository authorRepository,
-            SagaRepository sagaRepository, GenreRepository genreRepository) {
-        this.bookRepository = bookRepository;
-        this.authorRepository = authorRepository;
-        this.sagaRepository = sagaRepository;
-        this.genreRepository = genreRepository;
-    }
+    /** * Servicio para la gestión de archivos multimedia (portadas y EPUBs). */
+    private final FileServiceI fileService;
 
     /**
      * Guarda un nuevo libro o actualiza uno existente en la base de datos.
-     * Gestiona la creación o reutilización de Autores y Sagas.
-     * 
-     * @param book El objeto libro con sus metadatos.
-     * @return El libro guardado con su ID generado.
+     * <p>
+     * El proceso incluye la vinculación automática al usuario autenticado, la asignación
+     * de un estado por defecto (PENDING) y la gestión de la existencia previa de autores
+     * y sagas para evitar duplicados.
+     * </p>
+     * @param book El objeto libro con sus metadatos enviado desde el cliente.
+     * @return El libro persistido con su ID generado y relaciones actualizadas.
      */
     @Override
     @Transactional
@@ -61,27 +69,24 @@ public class BookServiceImpl implements BookServiceI {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         book.setUser(User.builder().id(currentUserId).build());
 
+        // Asigna estado pendiente si el libro es nuevo y no tiene uno definido
         if (book.getId() == null && book.getStatus() == null) {
             book.setStatus(ReadingStatus.PENDING);
         }
 
-        // Gestionar Autor (Buscar existente o crear nuevo)
+        // Gestión de Autor: Busca por nombre exacto o crea uno nuevo si no existe
         if (book.getAuthor() != null && book.getAuthor().getName() != null) {
             String authorName = book.getAuthor().getName();
             Optional<Author> existingAuthor = authorRepository.findByName(authorName);
             if (existingAuthor.isPresent()) {
                 book.setAuthor(existingAuthor.get());
             } else {
-                // Si es nuevo, lo guardamos explícitamente primero si no hay
-                // CascadeType.PERSIST
-                // Como Author tiene CascadeType.ALL en sus libros pero Book no en Author, mejor
-                // guardamos el autor.
                 Author newAuthor = authorRepository.save(book.getAuthor());
                 book.setAuthor(newAuthor);
             }
         }
 
-        // Gestionar Saga (Buscar existente o crear nueva)
+        // Gestión de Saga: Busca la saga del usuario por nombre o la crea
         if (book.getSaga() != null && book.getSaga().getName() != null) {
             String sagaName = book.getSaga().getName();
             Optional<Saga> existingSaga = sagaRepository.findByUserIdAndName(currentUserId, sagaName);
@@ -112,10 +117,9 @@ public class BookServiceImpl implements BookServiceI {
 
     /**
      * Busca un libro en la base de datos por su identificador único.
-     * * @param id El identificador del libro a buscar.
-     * 
-     * @return El objeto Book encontrado.
-     * @throws ResourceNotFoundException Si no se encuentra ningún libro con ese ID.
+     * @param id El identificador único del libro a buscar.
+     * @return El objeto {@link Book} encontrado.
+     * @throws ResourceNotFoundException Si no se encuentra ningún libro con el ID proporcionado.
      */
     @Override
     public Book getBookById(final Long id) {
@@ -124,50 +128,57 @@ public class BookServiceImpl implements BookServiceI {
     }
 
     /**
-     * Recupera todos los libros almacenados en la biblioteca.
-     * 
-     * @return Lista completa de libros.
+     * Recupera los libros almacenados en la biblioteca del usuario de forma paginada.
+     * @param page Índice de la página solicitada.
+     * @param size Número de elementos por página.
+     * @return Objeto Page de Spring Data con los datos correspondientes.
      */
     @Override
-    public List<Book> getAllBooks() {
+    public Page<Book> getAllBooks(final int page, final int size) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return bookRepository.findByUserId(currentUserId);
+        // Configuramos el objeto de paginación
+        Pageable pageable = PageRequest.of(page, size);
+        return bookRepository.findByUserId(currentUserId, pageable);
     }
 
     /**
-     * Actualiza los datos de seguimiento de un libro existente.
-     * 
-     * @param id          El identificador del libro a actualizar.
-     * @param bookDetails Los nuevos datos enviados desde el frontend.
-     * @return El libro actualizado.
+     * Actualiza los datos de seguimiento y metadatos de un libro existente.
+     * <p>
+     * Permite modificar campos individuales como el título, estado de lectura, calificación,
+     * fechas, géneros y vinculación a sagas.
+     * </p>
+     * * @param id El identificador del libro a actualizar.
+     * @param bookDetails Objeto con los nuevos datos enviados desde el frontend.
+     * @return El libro actualizado y persistido.
      */
     @Override
     @Transactional
-    public Book updateBook(Long id, Book bookDetails) {
+    public Book updateBook(final Long id, final Book bookDetails) {
         Book existingBook = getBookById(id);
 
-        if (bookDetails.getTitle() != null) {
-            existingBook.setTitle(bookDetails.getTitle());
-        }
-        if (bookDetails.getStatus() != null) {
-            existingBook.setStatus(bookDetails.getStatus());
-        }
-        if (bookDetails.getRating() != null) {
-            existingBook.setRating(bookDetails.getRating());
-        }
-        if (bookDetails.getStartDate() != null) {
-            existingBook.setStartDate(bookDetails.getStartDate());
-        }
-        if (bookDetails.getEndDate() != null) {
-            existingBook.setEndDate(bookDetails.getEndDate());
-        }
-        if (bookDetails.getIndexInSaga() != null) {
-            existingBook.setIndexInSaga(bookDetails.getIndexInSaga());
+        // Actualización de campos básicos si están presentes en la petición
+        if (bookDetails.getTitle() != null) existingBook.setTitle(bookDetails.getTitle());
+        if (bookDetails.getStatus() != null) existingBook.setStatus(bookDetails.getStatus());
+        if (bookDetails.getRating() != null) existingBook.setRating(bookDetails.getRating());
+        if (bookDetails.getStartDate() != null) existingBook.setStartDate(bookDetails.getStartDate());
+        if (bookDetails.getEndDate() != null) existingBook.setEndDate(bookDetails.getEndDate());
+        if (bookDetails.getIndexInSaga() != null) existingBook.setIndexInSaga(bookDetails.getIndexInSaga());
+
+        // Si cambian la portada, borramos la vieja
+        if (bookDetails.getCoverUrl() != null && !bookDetails.getCoverUrl().equals(existingBook.getCoverUrl())) {
+            fileService.deleteFile(existingBook.getCoverUrl());
+            existingBook.setCoverUrl(bookDetails.getCoverUrl());
         }
 
+        // Si cambian el archivo EPUB, borramos el viejo
+        if (bookDetails.getEpubUrl() != null && !bookDetails.getEpubUrl().equals(existingBook.getEpubUrl())) {
+            fileService.deleteFile(existingBook.getEpubUrl());
+            existingBook.setEpubUrl(bookDetails.getEpubUrl());
+        }
+
+        // Gestión del cambio de Autor
         if (bookDetails.getAuthor() != null && bookDetails.getAuthor().getName() != null) {
             String newAuthorName = bookDetails.getAuthor().getName();
-            // Solo cambiar si es diferente
             if (existingBook.getAuthor() == null || !existingBook.getAuthor().getName().equals(newAuthorName)) {
                 Optional<Author> existingAuthor = authorRepository.findByName(newAuthorName);
                 if (existingAuthor.isPresent()) {
@@ -180,11 +191,11 @@ public class BookServiceImpl implements BookServiceI {
             }
         }
 
-        // Determinar la portada efectiva
+        // Lógica para determinar la URL de portada efectiva
         String rawCover = bookDetails.getCoverUrl() != null ? bookDetails.getCoverUrl() : existingBook.getCoverUrl();
         String effectiveCover = (rawCover != null && !rawCover.trim().isEmpty()) ? rawCover : null;
 
-        // Actualizar Saga (Buscar existente o crear nueva)
+        // Gestión del cambio o actualización de Saga
         if (bookDetails.getSaga() != null && bookDetails.getSaga().getName() != null
                 && !bookDetails.getSaga().getName().isEmpty()) {
             String sagaName = bookDetails.getSaga().getName();
@@ -194,7 +205,6 @@ public class BookServiceImpl implements BookServiceI {
             Saga targetSaga;
             if (existingSaga.isPresent()) {
                 targetSaga = existingSaga.get();
-                // Si la saga no tiene portada (null o vacía) y el libro sí, se la asignamos
                 boolean sagaHasNoCover = targetSaga.getCoverUrl() == null || targetSaga.getCoverUrl().trim().isEmpty();
 
                 if (sagaHasNoCover && effectiveCover != null) {
@@ -216,14 +226,13 @@ public class BookServiceImpl implements BookServiceI {
             existingBook.setSaga(targetSaga);
 
         } else if (bookDetails.getSaga() == null) {
-            // Si envían null explícitamente, desvincular saga
+            // Desvinculación de saga si se envía null explícitamente
             existingBook.setSaga(null);
             existingBook.setIndexInSaga(null);
         }
 
-        // Actualizar Géneros
+        // Actualización de la colección de géneros
         if (bookDetails.getGenres() != null) {
-            // Limpiar géneros existentes para evitar duplicados/obsoletos
             existingBook.getGenres().clear();
 
             for (Genre genreDTO : bookDetails.getGenres()) {
@@ -239,24 +248,25 @@ public class BookServiceImpl implements BookServiceI {
             }
         }
 
-        // (Opcional) Si quieres permitir cambiar el epub o la portada manualmente:
-        if (bookDetails.getEpubUrl() != null)
-            existingBook.setEpubUrl(bookDetails.getEpubUrl());
-        if (bookDetails.getCoverUrl() != null)
-            existingBook.setCoverUrl(bookDetails.getCoverUrl());
+        // Actualización de URLs de archivos multimedia
+        if (bookDetails.getEpubUrl() != null) existingBook.setEpubUrl(bookDetails.getEpubUrl());
+        if (bookDetails.getCoverUrl() != null) existingBook.setCoverUrl(bookDetails.getCoverUrl());
 
-        // 3. Guardamos los cambios
         return bookRepository.save(existingBook);
     }
 
     /**
-     * Elimina un libro de la biblioteca personal.
-     * 
-     * @param id El identificador del libro a eliminar.
+     * Elimina un libro de la biblioteca personal del usuario.
+     * @param id El identificador único del libro a eliminar.
      */
     @Override
-    public void deleteBook(Long id) {
+    public void deleteBook(final Long id) {
         Book existingBook = getBookById(id);
+
+        // Antes de borrar el libro de PostgreSQL, limpiamos la nube
+        fileService.deleteFile(existingBook.getCoverUrl());
+        fileService.deleteFile(existingBook.getEpubUrl());
+
         bookRepository.delete(existingBook);
     }
 }

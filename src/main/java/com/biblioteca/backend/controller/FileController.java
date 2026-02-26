@@ -1,6 +1,16 @@
 package com.biblioteca.backend.controller;
 
+import com.biblioteca.backend.dto.ErrorResponse;
+import com.biblioteca.backend.service.FileServiceI;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,47 +23,53 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+/**
+ * Controlador REST encargado de la gestión y almacenamiento de archivos multimedia.
+ * <p>
+ * Expone los endpoints para recibir archivos (como portadas o .epub) y los deriva
+ * al servicio correspondiente para su almacenamiento en la nube.
+ * </p>
+ */
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/files")
-@Tag(name = "Archivos", description = "Subida de imágenes y archivos")
+@Tag(name = "Archivos", description = "Gestión de subida de archivos (EPUBS y portadas)")
 public class FileController {
 
-    private final Path fileStorageLocation;
+    private final FileServiceI fileService;
 
-    public FileController() {
-        this.fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
-            throw new RuntimeException("No se pudo crear el directorio de uploads.", ex);
-        }
-    }
-
+    /**
+     * Endpoint para la subida de archivos al servidor en la nube (Cloudinary).
+     * @param file Objeto MultipartFile enviado mediante FormData.
+     * @return ResponseEntity con la URL pública (HTTPS) de descarga o visualización.
+     */
+    @Operation(summary = "Subir archivo", description = "Sube un archivo a la nube y devuelve su URL pública segura")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Archivo subido exitosamente. Devuelve la URL en texto plano."),
+            @ApiResponse(responseCode = "400",
+                    description = "El archivo enviado es inválido o está vacío",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500",
+                    description = "Error interno al comunicarse con el proveedor de la nube",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+    public ResponseEntity<String> uploadFile(
+            @Parameter(description = "Archivo binario a subir (.jpg, .png, .epub)")
+            @RequestParam("file") final MultipartFile file) {
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("El archivo no puede estar vacío");
+        }
 
         try {
-            // Validar nombre de archivo
-            if (fileName.contains("..")) {
-                return ResponseEntity.badRequest().body("Nombre de archivo inválido");
-            }
-
-            // Copiar archivo al destino
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            // Generar URL de descarga
-            String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/uploads/")
-                    .path(fileName)
-                    .toUriString();
-
-            return ResponseEntity.ok(fileDownloadUri);
-
-        } catch (IOException ex) {
-            return ResponseEntity.internalServerError()
-                    .body("No se pudo subir el archivo " + fileName + ". Intenta de nuevo.");
+            String fileUrl = fileService.uploadFile(file);
+            return ResponseEntity.ok(fileUrl);
+        } catch (Exception ex) {
+            // Se captura cualquier error de I/O de Cloudinary
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("No se pudo subir el archivo a la nube. Detalle: " + ex.getMessage());
         }
     }
 }

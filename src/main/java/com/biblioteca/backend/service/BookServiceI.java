@@ -1,45 +1,50 @@
 package com.biblioteca.backend.service;
 
 import com.biblioteca.backend.model.Book;
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 /**
- * Puerto de entrada (Interfaz) para los casos de uso de la Biblioteca.
- * Define el contrato que la capa de presentación puede consumir.
+ * Interfaz para la gestión de la lógica de negocio de los libros.
+ * <p>
+ * Define las operaciones CRUD (Crear, Leer, Actualizar, Borrar) y las reglas
+ * de gestión de la biblioteca personal de cada usuario.
+ * </p>
  */
 public interface BookServiceI {
 
     /**
-     * Guarda un nuevo libro en la base de datos o actualiza uno existente.
-     * * @param book Entidad del libro con los datos a guardar.
-     * @return El libro persistido con su ID generado.
+     * Registra un nuevo libro o guarda los cambios de uno existente.
+     * @param book Entidad libro con la información a persistir.
+     * @return El libro guardado con su ID y relaciones actualizadas.
      */
     Book saveBook(Book book);
 
     /**
-     * Busca y recupera un libro específico utilizando su identificador único.
-     * * @param id El identificador único del libro en la base de datos.
-     * @return La entidad del libro encontrada.
+     * Recupera la información detallada de un libro por su identificador.
+     * @param id Identificador único del libro.
+     * @return La entidad Book encontrada.
      */
     Book getBookById(Long id);
 
     /**
-     * Obtiene todos los libros almacenados en la biblioteca del usuario.
-     * * @return Lista completa de libros.
+     * Obtiene la colección completa de libros del usuario autenticado actualmente.
+     * @return Lista de libros pertenecientes al usuario.
      */
-    List<Book> getAllBooks();
+    Page<Book> getAllBooks(int page, int size);
 
     /**
-     * Actualiza los metadatos y el estado de lectura de un libro ya existente.
-     * * @param id El identificador único del libro a actualizar.
-     * @param bookDetails Objeto con los nuevos datos (estado, nota, fechas, etc.).
-     * @return El libro actualizado y persistido en la base de datos.
+     * Actualiza las propiedades de un libro ya existente en la base de datos.
+     * @param id Identificador del libro a modificar.
+     * @param bookDetails Objeto con los nuevos datos a aplicar.
+     * @return El libro tras aplicar y persistir los cambios.
      */
     Book updateBook(Long id, Book bookDetails);
 
     /**
-     * Elimina permanentemente un libro de la biblioteca personal.
-     * * @param id El identificador único del libro a eliminar.
+     * Elimina un libro de la base de datos de forma permanente.
+     * @param id Identificador del libro a borrar.
      */
     void deleteBook(Long id);
 }
