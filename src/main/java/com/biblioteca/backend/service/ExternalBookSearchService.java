@@ -4,15 +4,18 @@ import com.biblioteca.backend.dto.GoogleBooksResponse;
 import java.util.List;
 
 /**
- * Puerto de salida para buscar metadatos de libros en catálogos externos.
- * Aisla la lógica de negocio del proveedor específico (Google Books, OpenLibrary, etc.).
+ * Interfaz para la búsqueda de libros en catálogos externos.
+ * <p>
+ * Abstrae la implementación de servicios de terceros (como Google Books API)
+ * para permitir la búsqueda de metadatos de libros por título o autor.
+ * </p>
  */
 public interface ExternalBookSearchService {
 
     /**
-     * Busca coincidencias de libros por su título en un servicio de terceros.
-     * @param title El título introducido por el usuario.
-     * @return Lista de coincidencias limitadas.
+     * Realiza una búsqueda en la API externa utilizando un término de consulta.
+     * @param title Título o palabras clave para la búsqueda.
+     * @return Lista de resultados mapeados al formato interno de la aplicación.
      */
     List<GoogleBooksResponse.Item> searchByTitle(String title);
 }
