@@ -1,5 +1,6 @@
 package com.biblioteca.backend.security;
 
+import com.biblioteca.backend.exception.UnauthorizedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -32,6 +33,7 @@ public class SecurityUtils {
             return ((CustomUserDetails) authentication.getPrincipal()).getUser().getId();
         }
         // Error de seguridad: se intentó realizar una operación de usuario sin estar logueado
-        throw new RuntimeException("No hay usuario autenticado en el contexto de seguridad");
+        throw new UnauthorizedException("No hay usuario autenticado en el contexto " +
+                "de seguridad. Por favor, inicie sesión.");
     }
 }

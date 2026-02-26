@@ -3,6 +3,8 @@ package com.biblioteca.backend.model;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -39,6 +41,7 @@ public class Book {
     /**
      * Título completo del libro. Es un campo obligatorio en la base de datos.
      */
+    @NotBlank(message = "El título del libro no puede estar vacío")
     @Column(nullable = false)
     private String title;
 
@@ -60,6 +63,7 @@ public class Book {
      * Estado de lectura actual del libro (PENDING, READING o FINISHED).
      * Se guarda como texto (STRING) en la base de datos en lugar de número para mayor legibilidad.
      */
+    @NotNull(message = "El estado de lectura es obligatorio")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReadingStatus status;

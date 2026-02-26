@@ -1,8 +1,11 @@
 package com.biblioteca.backend.controller;
 
 import com.biblioteca.backend.dto.DashboardResponse;
+import com.biblioteca.backend.dto.ErrorResponse;
 import com.biblioteca.backend.service.DashboardServiceI;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,11 +46,14 @@ public class DashboardController {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "No autorizado - El token JWT no es válido o ha expirado"
+                    description = "No autorizado - El token JWT no es válido, ha expirado o no se encuentra" +
+                            " en la cabecera",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "Error interno al procesar los cálculos en el servidor"
+                    description = "Error interno al procesar los cálculos estadísticos en el servidor",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
     @GetMapping

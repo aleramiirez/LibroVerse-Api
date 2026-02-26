@@ -16,6 +16,9 @@ import com.biblioteca.backend.security.SecurityUtils;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,13 +124,17 @@ public class BookServiceImpl implements BookServiceI {
     }
 
     /**
-     * Recupera todos los libros almacenados en la biblioteca del usuario autenticado.
-     * @return Lista completa de libros pertenecientes al usuario actual.
+     * Recupera los libros almacenados en la biblioteca del usuario de forma paginada.
+     * @param page Índice de la página solicitada.
+     * @param size Número de elementos por página.
+     * @return Objeto Page de Spring Data con los datos correspondientes.
      */
     @Override
-    public List<Book> getAllBooks() {
+    public Page<Book> getAllBooks(final int page, final int size) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return bookRepository.findByUserId(currentUserId);
+        // Configuramos el objeto de paginación
+        Pageable pageable = PageRequest.of(page, size);
+        return bookRepository.findByUserId(currentUserId, pageable);
     }
 
     /**

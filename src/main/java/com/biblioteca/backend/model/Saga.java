@@ -2,6 +2,7 @@ package com.biblioteca.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,7 @@ public class Saga {
     /**
      * Nombre de la saga (ej. "Nacidos de la Bruma").
      */
+    @NotBlank(message = "El nombre de la saga es obligatorio")
     @Column(nullable = false)
     private String name;
 

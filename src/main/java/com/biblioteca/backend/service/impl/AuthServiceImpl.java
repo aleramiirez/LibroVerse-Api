@@ -3,6 +3,8 @@ package com.biblioteca.backend.service.impl;
 import com.biblioteca.backend.dto.auth.AuthResponse;
 import com.biblioteca.backend.dto.auth.LoginRequest;
 import com.biblioteca.backend.dto.auth.RegisterRequest;
+import com.biblioteca.backend.exception.ResourceNotFoundException;
+import com.biblioteca.backend.exception.UserAlreadyExistsException;
 import com.biblioteca.backend.model.User;
 import com.biblioteca.backend.repository.UserRepository;
 import com.biblioteca.backend.security.CustomUserDetails;
@@ -52,7 +54,8 @@ public class AuthServiceImpl implements AuthServiceI {
     public AuthResponse register(final RegisterRequest request) {
         // Validación de existencia previa del usuario
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("El email ya está registrado");
+            throw new UserAlreadyExistsException("El email " + request.getEmail() +
+                    " ya está registrado en la plataforma.");
         }
 
         // Construcción y cifrado de la nueva entidad de usuario
@@ -87,7 +90,7 @@ public class AuthServiceImpl implements AuthServiceI {
 
         // Recuperación de la información del usuario tras autenticación exitosa
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con el email proporcionado"));
 
         // Generación del token JWT para las peticiones subsecuentes
         String token = jwtUtil.generateToken(new CustomUserDetails(user));

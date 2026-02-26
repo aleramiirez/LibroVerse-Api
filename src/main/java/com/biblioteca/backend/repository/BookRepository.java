@@ -2,6 +2,8 @@ package com.biblioteca.backend.repository;
 
 import com.biblioteca.backend.model.Book;
 import com.biblioteca.backend.model.ReadingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
@@ -60,11 +62,14 @@ public interface BookRepository extends JpaRepository<Book, Long> {
             Integer currentIndex);
 
     /**
-     * Recupera la biblioteca completa de un usuario.
-     * Se utiliza EntityGraph para cargar Autor, Saga y Géneros en una sola consulta SQL (JOIN).
-     * @param userId ID del usuario.
-     * @return Lista completa de libros del usuario.
+     * Recupera la biblioteca de un usuario de forma paginada y optimizada.
+     * <p>
+     * Se utiliza EntityGraph para cargar el Autor y la Saga en una sola consulta SQL (JOIN).
+     * </p>
+     * @param userId ID del usuario propietario.
+     * @param pageable Configuración de paginación (número de página, tamaño y orden).
+     * @return Página de libros ({@link Page}) del usuario.
      */
-    @EntityGraph(attributePaths = {"author", "saga", "genres"})
-    List<Book> findByUserId(Long userId);
+    @EntityGraph(attributePaths = {"author", "saga"})
+    Page<Book> findByUserId(Long userId, Pageable pageable);
 }

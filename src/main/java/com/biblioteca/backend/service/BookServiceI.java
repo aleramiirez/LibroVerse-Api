@@ -1,6 +1,8 @@
 package com.biblioteca.backend.service;
 
 import com.biblioteca.backend.model.Book;
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 /**
@@ -30,7 +32,7 @@ public interface BookServiceI {
      * Obtiene la colección completa de libros del usuario autenticado actualmente.
      * @return Lista de libros pertenecientes al usuario.
      */
-    List<Book> getAllBooks();
+    Page<Book> getAllBooks(int page, int size);
 
     /**
      * Actualiza las propiedades de un libro ya existente en la base de datos.

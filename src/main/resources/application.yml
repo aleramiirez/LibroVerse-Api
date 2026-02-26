@@ -29,6 +29,7 @@ spring:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 30
 
 # CONFIGURACION DEL SERVIDOR WEB
 server:
