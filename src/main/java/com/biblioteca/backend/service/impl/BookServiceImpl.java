@@ -13,6 +13,7 @@ import com.biblioteca.backend.repository.SagaRepository;
 import com.biblioteca.backend.service.BookServiceI;
 import com.biblioteca.backend.model.User;
 import com.biblioteca.backend.security.SecurityUtils;
+import com.biblioteca.backend.service.FileServiceI;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,9 @@ public class BookServiceImpl implements BookServiceI {
 
     /** Repositorio para la gestión de géneros literarios. */
     private final GenreRepository genreRepository;
+
+    /** * Servicio para la gestión de archivos multimedia (portadas y EPUBs). */
+    private final FileServiceI fileService;
 
     /**
      * Guarda un nuevo libro o actualiza uno existente en la base de datos.
@@ -160,6 +164,18 @@ public class BookServiceImpl implements BookServiceI {
         if (bookDetails.getEndDate() != null) existingBook.setEndDate(bookDetails.getEndDate());
         if (bookDetails.getIndexInSaga() != null) existingBook.setIndexInSaga(bookDetails.getIndexInSaga());
 
+        // Si cambian la portada, borramos la vieja
+        if (bookDetails.getCoverUrl() != null && !bookDetails.getCoverUrl().equals(existingBook.getCoverUrl())) {
+            fileService.deleteFile(existingBook.getCoverUrl());
+            existingBook.setCoverUrl(bookDetails.getCoverUrl());
+        }
+
+        // Si cambian el archivo EPUB, borramos el viejo
+        if (bookDetails.getEpubUrl() != null && !bookDetails.getEpubUrl().equals(existingBook.getEpubUrl())) {
+            fileService.deleteFile(existingBook.getEpubUrl());
+            existingBook.setEpubUrl(bookDetails.getEpubUrl());
+        }
+
         // Gestión del cambio de Autor
         if (bookDetails.getAuthor() != null && bookDetails.getAuthor().getName() != null) {
             String newAuthorName = bookDetails.getAuthor().getName();
@@ -246,6 +262,11 @@ public class BookServiceImpl implements BookServiceI {
     @Override
     public void deleteBook(final Long id) {
         Book existingBook = getBookById(id);
+
+        // Antes de borrar el libro de PostgreSQL, limpiamos la nube
+        fileService.deleteFile(existingBook.getCoverUrl());
+        fileService.deleteFile(existingBook.getEpubUrl());
+
         bookRepository.delete(existingBook);
     }
 }

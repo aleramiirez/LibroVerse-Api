@@ -21,4 +21,14 @@ public interface FileServiceI {
      */
     String uploadFile(MultipartFile file) throws IOException;
 
+    /**
+     * Elimina un archivo del almacenamiento remoto utilizando su URL pública.
+     * <p>
+     * Este método es fundamental para evitar la acumulación de archivos huérfanos en la nube
+     * cuando se actualizan metadatos de un libro o se elimina un registro de la biblioteca.
+     * </p>
+     * @param fileUrl URL completa del recurso que se desea eliminar.
+     */
+    void deleteFile(String fileUrl);
+
 }

@@ -53,4 +53,65 @@ public class CloudinaryFileServiceImpl implements FileServiceI {
         return uploadResult.get("secure_url").toString();
     }
 
+
+    /**
+     * Elimina un archivo de Cloudinary a partir de su URL pública.
+     * <p>
+     * Este método valida si la URL pertenece a Cloudinary antes de intentar el borrado.
+     * Si la URL corresponde a un recurso externo (como Google Books), la operación se ignora.
+     * </p>
+     * @param fileUrl URL completa del archivo que se desea eliminar.
+     */
+    @Override
+    public void deleteFile(final String fileUrl) {
+        // Solo intentamos borrar si es una URL válida de Cloudinary
+        if (fileUrl != null && fileUrl.contains("cloudinary.com")) {
+            try {
+                String publicId = extractPublicIdFromUrl(fileUrl);
+                if (publicId != null) {
+                    cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+                    System.out.println("Archivo eliminado de Cloudinary: " + publicId);
+                }
+            } catch (Exception e) {
+                // Registro del error en consola en caso de fallo en la comunicación con la API
+                System.err.println("Error al intentar eliminar archivo en Cloudinary: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Extrae el identificador único (public_id) de un recurso a partir de su URL de Cloudinary.
+     * <p>
+     * Realiza un parsing de la cadena para eliminar el dominio, el prefijo de subida,
+     * la versión del archivo (v12345...) y la extensión del archivo, dejando únicamente
+     * la ruta necesaria para las operaciones de gestión de Cloudinary.
+     * </p>
+     * @param url URL completa del recurso.
+     * @return El public_id del recurso o {@code null} si la URL no tiene el formato esperado.
+     */
+    private String extractPublicIdFromUrl(final String url) {
+        try {
+            // Buscamos donde empieza la ruta real después de /upload/
+            int uploadIndex = url.indexOf("/upload/");
+            if (uploadIndex == -1) return null;
+
+            String path = url.substring(uploadIndex + 8);
+
+            // Eliminamos la versión si existe (ej. v1634567890/)
+            if (path.matches("v\\d+/.*")) {
+                path = path.replaceFirst("v\\d+/", "");
+            }
+
+            // Eliminamos la extensión (.jpg, .epub, etc.)
+            int dotIndex = path.lastIndexOf('.');
+            if (dotIndex != -1) {
+                path = path.substring(0, dotIndex);
+            }
+            return path;
+        } catch (Exception e) {
+            // Retorno de null en caso de error durante el parsing
+            return null;
+        }
+    }
+
 }
