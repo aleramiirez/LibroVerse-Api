@@ -53,7 +53,7 @@ public class GoogleBooksServiceImpl implements ExternalBookSearchService {
      * Si ocurre un error o no hay resultados, devuelve una lista vacía.
      */
     @Override
-    public List<GoogleBooksResponse.Item> searchByTitle(String title) {
+    public List<GoogleBooksResponse.Item> searchByTitle(final String title) {
         try {
             // Formateo del título para la URL (reemplazo de espacios por +)
             String formattedTitle = title.replace(" ", "+");

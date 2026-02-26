@@ -4,6 +4,7 @@ import com.biblioteca.backend.service.FileServiceI;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -62,6 +63,7 @@ public class CloudinaryFileServiceImpl implements FileServiceI {
      * </p>
      * @param fileUrl URL completa del archivo que se desea eliminar.
      */
+    @Async
     @Override
     public void deleteFile(final String fileUrl) {
         // Solo intentamos borrar si es una URL válida de Cloudinary
